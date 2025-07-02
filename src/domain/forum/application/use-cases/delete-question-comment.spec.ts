@@ -1,43 +1,46 @@
-import { InMemoryAnswerCommentsRepository } from 'test/repositories/in-memory-answer-comments-repository'
-import { DeleteAnswerCommentUseCase } from './delete-answer-comment'
-import { makeAnswerComment } from 'test/factories/make-answer-comment'
+import { InMemoryQuestionCommentsRepository } from 'test/repositories/in-memory-question-comments-repository'
+import { DeleteQuestionCommentUseCase } from './delete-question-comment'
+import { makeQuestionComment } from 'test/factories/make-question-comment'
 import { UniqueEntityID } from '@/core/entities/unique-entity-id'
+import { NotAllowedError } from './errors/not-allowed-error'
 
-let inMemoryAnswerCommentsRepository: InMemoryAnswerCommentsRepository
-let sut: DeleteAnswerCommentUseCase
+let inMemoryQuestionCommentsRepository: InMemoryQuestionCommentsRepository
+let sut: DeleteQuestionCommentUseCase
 
-describe('Delete Answer Comment', () => {
+describe('Delete Question Comment', () => {
   beforeEach(() => {
-    inMemoryAnswerCommentsRepository = new InMemoryAnswerCommentsRepository()
+    inMemoryQuestionCommentsRepository =
+      new InMemoryQuestionCommentsRepository()
 
-    sut = new DeleteAnswerCommentUseCase(inMemoryAnswerCommentsRepository)
+    sut = new DeleteQuestionCommentUseCase(inMemoryQuestionCommentsRepository)
   })
 
-  it('should be able to delete a answer comment', async () => {
-    const answerComment = makeAnswerComment()
+  it('should be able to delete a question comment', async () => {
+    const questionComment = makeQuestionComment()
 
-    await inMemoryAnswerCommentsRepository.create(answerComment)
+    await inMemoryQuestionCommentsRepository.create(questionComment)
 
     await sut.execute({
-      answerCommentId: answerComment.id.toString(),
-      authorId: answerComment.authorId.toString(),
+      questionCommentId: questionComment.id.toString(),
+      authorId: questionComment.authorId.toString(),
     })
 
-    expect(inMemoryAnswerCommentsRepository.items).toHaveLength(0)
+    expect(inMemoryQuestionCommentsRepository.items).toHaveLength(0)
   })
 
-  it('should not be able to delete another user answer comment', async () => {
-    const answerComment = makeAnswerComment({
+  it('should not be able to delete another user question comment', async () => {
+    const questionComment = makeQuestionComment({
       authorId: new UniqueEntityID('author-1'),
     })
 
-    await inMemoryAnswerCommentsRepository.create(answerComment)
+    await inMemoryQuestionCommentsRepository.create(questionComment)
 
-    expect(() => {
-      return sut.execute({
-        answerCommentId: answerComment.id.toString(),
-        authorId: 'author-2',
-      })
-    }).rejects.toBeInstanceOf(Error)
+    const result = await sut.execute({
+      questionCommentId: questionComment.id.toString(),
+      authorId: 'author-2',
+    })
+
+    expect(result.isLeft()).toBe(true)
+    expect(result.value).toBeInstanceOf(NotAllowedError)
   })
 })
